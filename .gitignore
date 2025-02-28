@@ -1,0 +1,5 @@
+assets/
+logs/
+*.pyc
+*.egg-info
+.vscode/
