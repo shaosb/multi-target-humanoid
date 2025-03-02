@@ -258,6 +258,18 @@ class ObservationsCfg:
         joint_pos = ObsTerm(func=mdp.joint_pos_rel, noise=Unoise(n_min=-0.01, n_max=0.01))
         joint_vel = ObsTerm(func=mdp.joint_vel_rel, noise=Unoise(n_min=-1.5, n_max=1.5))
         actions = ObsTerm(func=mdp.last_action)
+        # height_scan = ObsTerm(
+        #     func=mdp.height_scan,
+        #     params={"sensor_cfg": SceneEntityCfg("height_scanner")},
+        #     clip=(-1.0, 1.0),
+        # )
+
+        def __post_init__(self):
+            self.enable_corruption = False
+            self.concatenate_terms = True
+
+    @configclass
+    class MultiCriticObsCfg(ObsGroup):
         height_scan = ObsTerm(
             func=mdp.height_scan,
             params={"sensor_cfg": SceneEntityCfg("height_scanner")},
@@ -269,10 +281,11 @@ class ObservationsCfg:
             self.concatenate_terms = True
 
     # observation groups
-    policy: PolicyCfg = PolicyCfg()
-    proprio: ProprioCfg = ProprioCfg()
+    # policy: PolicyCfg = PolicyCfg()
+    # proprio: ProprioCfg = ProprioCfg()
+    policy: ProprioCfg = ProprioCfg()
     critic: CriticObsCfg = CriticObsCfg()
-    multi_critic: CriticObsCfg = CriticObsCfg()
+    multi_critic: MultiCriticObsCfg = MultiCriticObsCfg()
 
 ## 
 # Actions
@@ -374,18 +387,56 @@ class EventCfg:
 # Rewards
 #
 @configclass
-class CustomH1Rewards(H1Rewards):
-    feet_stumble = RewTerm(
-        func=mdp.feet_stumble,
-        weight=-0.5,
-        params={
-            "sensor_cfg": SceneEntityCfg("contact_forces", body_names=".*ankle_link"),
-        },
+class CustomH1Rewards():
+    termination_penalty = RewTerm(func=mdp.is_terminated, weight=-200.0)
+    lin_vel_z_l2 = None
+    track_lin_vel_xy_exp = RewTerm(
+        func=mdp.track_lin_vel_xy_yaw_frame_exp,
+        weight=1.0,
+        params={"command_name": "base_velocity", "std": 0.5},
+    )
+    track_ang_vel_z_exp = RewTerm(
+        func=mdp.track_ang_vel_z_world_exp, weight=1.0, params={"command_name": "base_velocity", "std": 0.5}
+    )
+    # Penalize ankle joint limits
+    dof_pos_limits = RewTerm(
+        func=mdp.joint_pos_limits, weight=-1.0, params={"asset_cfg": SceneEntityCfg("robot", joint_names=".*_ankle")}
+    )
+    # Penalize deviation from default of the joints that are not essential for locomotion
+    joint_deviation_hip = RewTerm(
+        func=mdp.joint_deviation_l1,
+        weight=-0.2,
+        params={"asset_cfg": SceneEntityCfg("robot", joint_names=[".*_hip_yaw", ".*_hip_roll"])},
+    )
+    joint_deviation_arms = RewTerm(
+        func=mdp.joint_deviation_l1,
+        weight=-0.2,
+        params={"asset_cfg": SceneEntityCfg("robot", joint_names=[".*_shoulder_.*", ".*_elbow"])},
+    )
+    joint_deviation_torso = RewTerm(
+        func=mdp.joint_deviation_l1, weight=-0.1, params={"asset_cfg": SceneEntityCfg("robot", joint_names="torso")}
     )
 
 
 @configclass
-class MultiRewards(H1Rewards):
+class MultiRewards():
+    feet_air_time = RewTerm(
+        func=mdp.feet_air_time_positive_biped,
+        weight=0.25,
+        params={
+            "command_name": "base_velocity",
+            "sensor_cfg": SceneEntityCfg("contact_forces", body_names=".*ankle_link"),
+            "threshold": 0.4,
+        },
+    )
+    feet_slide = RewTerm(
+        func=mdp.feet_slide,
+        weight=-0.25,
+        params={
+            "sensor_cfg": SceneEntityCfg("contact_forces", body_names=".*ankle_link"),
+            "asset_cfg": SceneEntityCfg("robot", body_names=".*ankle_link"),
+        },
+    )
     feet_stumble = RewTerm(
         func=mdp.feet_stumble,
         weight=-0.5,
