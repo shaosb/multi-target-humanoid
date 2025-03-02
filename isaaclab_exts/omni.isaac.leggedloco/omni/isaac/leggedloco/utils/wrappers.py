@@ -24,6 +24,10 @@ from rsl_rl.env import VecEnv
 from omni.isaac.lab.envs import DirectRLEnv, ManagerBasedRLEnv
 from omni.isaac.lab_tasks.utils.wrappers.rsl_rl import RslRlVecEnvWrapper
 
+from omni.isaac.lab_tasks.managers.reward_manager import RewardManager
+
+from collections.abc import Sequence
+
 
 def get_proprio_obs_dim(env: ManagerBasedRLEnv) -> int:
     """Returns the dimension of the proprioceptive observations."""
@@ -111,3 +115,33 @@ class RslRlVecEnvHistoryWrapper(RslRlVecEnvWrapper):
 
     def close(self):  # noqa: D102
         return self.env.close()
+
+
+class RslRlMultiCriticVecEnvHistoryWrapper(RslRlVecEnvHistoryWrapper):
+    """Wraps around Isaac Lab environment for RSL-RL to add multi critic and rewards. """
+    
+    # def __init__(self, env: ManagerBasedRLEnv, history_length: int = 1):
+    #     super().__init__(env, history_length)
+
+    def load_managers(self):
+        assert self.cfg.multi_rewards is not None, "multi_rewards must be defined in the environment configuration."
+        
+        self.multi_reward_manager = RewardManager(self.cfg.multi_rewards, self)
+        print("[INFO] Multi Reward Manager: ", self.multi_reward_manager)
+
+    def step(self, actions: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor, dict]:
+        curr_obs, rew, dones, extras = super().step(actions)
+        # compute multi rewards
+        multi_rewards = self.multi_reward_manager.compute(dt=self.step_dt)
+        # update the rewards in the extras dict
+        extras["multi_rewards"] = multi_rewards
+        return curr_obs, rew, dones, extras
+
+    def _reset_idx(self, env_ids: Sequence[int]):
+        info = self.multi_reward_manager.reset(env_ids)
+        self.extra["log"].update(info)
+        super()._reset_idx(env_ids)
+
+    def close(self):
+        del multi_reward_manager
+        return super().close()

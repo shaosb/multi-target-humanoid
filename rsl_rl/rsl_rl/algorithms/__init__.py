@@ -4,5 +4,6 @@
 """Implementation of different RL agents."""
 
 from .ppo import PPO
+from .ppo_multi_critic import PPOMultiCritic
 
-__all__ = ["PPO"]
+__all__ = ["PPO", "PPOMultiCritic"]

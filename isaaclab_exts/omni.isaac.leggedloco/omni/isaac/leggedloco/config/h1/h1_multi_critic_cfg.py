@@ -407,7 +407,7 @@ class H1MultiCriticEnvCfg(ManagerBasedRLEnvCfg):
     commands: CommandsCfg = CommandsCfg()
     # MDP settings
     rewards: RewardsCfg = CustomH1Rewards()
-    rewards_normal: RewardsCfg = NormalRewards()
+    multi_rewards: RewardsCfg = NormalRewards()
     # rewards: RewardsCfg = H1Rewards()
     # rewards: RewardsCfg = CustomH1Rewards()
     terminations: TerminationsCfg = TerminationsCfg()

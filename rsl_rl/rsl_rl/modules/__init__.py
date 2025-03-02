@@ -7,6 +7,7 @@ from .actor_critic import ActorCritic
 from .actor_critic_recurrent import ActorCriticRecurrent
 from .actor_critic_depth_cnn import ActorCriticDepthCNN, ActorCriticDepthCNNRecurrent
 from .actor_critic_history import ActorCriticHistory
+from .actor_multi_critic import ActorCriticMultiCritic
 from .normalizer import EmpiricalNormalization
 
 __all__ = [
@@ -15,5 +16,6 @@ __all__ = [
     "ActorCriticDepthCNN", 
     "ActorCriticDepthCNNRecurrent", 
     "EmpiricalNormalization", 
-    "ActorCriticHistory"
+    "ActorCriticHistory",
+    "ActorCriticMultiCritic",
 ]

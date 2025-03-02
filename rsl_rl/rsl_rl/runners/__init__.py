@@ -5,5 +5,6 @@
 
 from .on_policy_runner import OnPolicyRunner
 from .on_policy_runner_history import OnPolicyRunnerHistory
+from .on_policy_runner_multi_critic import OnPolicyRunnerMultiCritic
 
-__all__ = ["OnPolicyRunner", "OnPolicyRunnerHistory"]
+__all__ = ["OnPolicyRunner", "OnPolicyRunnerHistory", "OnPolicyRunnerMultiCritic"]
