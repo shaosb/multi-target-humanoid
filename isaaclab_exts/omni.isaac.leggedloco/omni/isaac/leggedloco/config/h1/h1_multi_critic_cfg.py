@@ -60,6 +60,7 @@ class H1MultiCriticPPORunnerCfg(H1RoughPPORunnerCfg):
         class_name="ActorCriticMultiCritic",
     )
     algorithm = RslRlPpoAlgorithmCfg(
+        class_name="PPOMultiCritic",
         value_loss_coef=1.0,
         use_clipped_value_loss=True,
         clip_param=0.2,
@@ -115,13 +116,13 @@ ROUGH_TERRAINS_CFG = TerrainGeneratorCfg(
         "hf_pyramid_slope_inv": terrain_gen.HfInvertedPyramidSlopedTerrainCfg(
             proportion=0.1, slope_range=(0.0, 0.4), platform_width=2.0, border_width=0.25
         ),
-        "init_pos": terrain_gen.HfDiscreteObstaclesTerrainCfg(
-            proportion=0.2, 
-            num_obstacles=10,
-            obstacle_height_mode="fixed",
-            obstacle_height_range=(1.5, 1.5), obstacle_width_range=(0.3, 1.5), 
-            platform_width=0.25
-        ),
+        # "init_pos": terrain_gen.HfDiscreteObstaclesTerrainCfg(
+        #     proportion=0.2,
+        #     num_obstacles=10,
+        #     obstacle_height_mode="fixed",
+        #     obstacle_height_range=(1.5, 1.5), obstacle_width_range=(0.3, 1.5),
+        #     platform_width=0.25
+        # ),
     },
 )
 for sub_terrain_name, sub_terrain_cfg in ROUGH_TERRAINS_CFG.sub_terrains.items():
@@ -206,11 +207,11 @@ class ObservationsCfg:
         joint_pos = ObsTerm(func=mdp.joint_pos_rel)
         joint_vel = ObsTerm(func=mdp.joint_vel_rel)
         actions = ObsTerm(func=mdp.last_action)
-        height_scan = ObsTerm(
-            func=mdp.height_scan,
-            params={"sensor_cfg": SceneEntityCfg("height_scanner")},
-            clip=(-1.0, 1.0),
-        )
+        # height_scan = ObsTerm(
+        #     func=mdp.height_scan,
+        #     params={"sensor_cfg": SceneEntityCfg("height_scanner")},
+        #     clip=(-1.0, 1.0),
+        # )
         # depth_measurement = ObsTerm(
         #     func=mdp.process_lidar,
         #     params={"sensor_cfg": SceneEntityCfg("lidar_sensor")},
@@ -398,6 +399,12 @@ class CustomH1Rewards():
     track_ang_vel_z_exp = RewTerm(
         func=mdp.track_ang_vel_z_world_exp, weight=1.0, params={"command_name": "base_velocity", "std": 0.5}
     )
+    # Penalize
+    lin_vel_z_l2 = RewTerm(func=mdp.lin_vel_z_l2, weight=-2.0)
+    ang_vel_xy_l2 = RewTerm(func=mdp.ang_vel_xy_l2, weight=-0.05)
+    dof_torques_l2 = RewTerm(func=mdp.joint_torques_l2, weight=-1.0e-5)
+    dof_acc_l2 = RewTerm(func=mdp.joint_acc_l2, weight=-2.5e-7)
+    action_rate_l2 = RewTerm(func=mdp.action_rate_l2, weight=-0.01)
     # Penalize ankle joint limits
     dof_pos_limits = RewTerm(
         func=mdp.joint_pos_limits, weight=-1.0, params={"asset_cfg": SceneEntityCfg("robot", joint_names=".*_ankle")}
@@ -416,6 +423,9 @@ class CustomH1Rewards():
     joint_deviation_torso = RewTerm(
         func=mdp.joint_deviation_l1, weight=-0.1, params={"asset_cfg": SceneEntityCfg("robot", joint_names="torso")}
     )
+    # -- optional penalties
+    flat_orientation_l2 = RewTerm(func=mdp.flat_orientation_l2, weight=0.0)
+    dof_pos_limits = RewTerm(func=mdp.joint_pos_limits, weight=0.0)
 
 
 @configclass
@@ -534,7 +544,8 @@ class H1MultiCriticEnvCfg(ManagerBasedRLEnvCfg):
         self.rewards.dof_torques_l2.weight = 0.0
         self.rewards.action_rate_l2.weight = -0.005
         self.rewards.dof_acc_l2.weight = -1.25e-7
-        self.rewards.feet_air_time.weight = 0.25
+        # self.rewards.feet_air_time.weight = 0.25
+        self.multi_rewards.feet_air_time.weight = 0.25
 
         # Commands
         self.commands.base_velocity.ranges.lin_vel_x = (0.0, 1.0)

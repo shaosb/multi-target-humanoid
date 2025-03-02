@@ -14,9 +14,6 @@ from omni.isaac.lab.app import AppLauncher
 # local imports
 import cli_args  # isort: skip
 
-import os
-os.environ["CONFIG"] = "robot_87_config.yaml"
-
 # add argparse arguments
 parser = argparse.ArgumentParser(description="Train an RL agent with RSL-RL.")
 parser.add_argument("--video", action="store_true", default=False, help="Record videos during training.")
@@ -52,6 +49,8 @@ import os
 import torch
 from datetime import datetime
 
+# from rsl_rl.runners import OnPolicyRunnerMultiCritic
+# from rsl_rl.runners import OnPolicyRunnerMultiCritic
 from rsl_rl.runners import OnPolicyRunnerMultiCritic
 
 from omni.isaac.lab.envs import ManagerBasedRLEnvCfg
@@ -63,10 +62,8 @@ from omni.isaac.lab_tasks.utils import get_checkpoint_path, parse_env_cfg
 from omni.isaac.lab_tasks.utils.wrappers.rsl_rl import RslRlOnPolicyRunnerCfg, RslRlVecEnvWrapper
 from omni.isaac.lab_tasks.utils import get_checkpoint_path, parse_env_cfg
 
-# from omni.isaac.viplanner.config import H1RoughEnvCfg, H1BaseRoughEnvCfg, H12DoFRoughEnvCfg, H1VisionRoughEnvCfg, G1VisionRoughEnvCfg
-# from omni.isaac.viplanner.config import H1RoughEnvCfg_PLAY, H1BaseRoughEnvCfg_PLAY, H12DoFRoughEnvCfg_PLAY, H1VisionRoughEnvCfg_PLAY, G1VisionRoughEnvCfg_PLAY
 from omni.isaac.leggedloco.config import *
-from omni.isaac.leggedloco.utils import RslRlMultiCriticVecEnvHistoryWrapper
+from omni.isaac.leggedloco.utils import RslRlVecEnvHistoryWrapper, RslRlMultiCriticVecEnvHistoryWrapper
 
 torch.backends.cuda.matmul.allow_tf32 = True
 torch.backends.cudnn.allow_tf32 = True
@@ -115,7 +112,7 @@ def main():
     #     env = RslRlVecEnvHistoryWrapper(env, history_length=args_cli.history_length)
     # else:
     #     env = RslRlVecEnvWrapper(env)
-    env = RslRlMultiCriticVecEnvHistoryWrapper(env, history_length=args_cli.history_length)
+    env = RslRlMultiCriticVecEnvHistoryWrapper(env)
 
     # create runner from rsl-rl
     # runner = OnPolicyRunner(env, agent_cfg.to_dict(), log_dir=log_dir, device=agent_cfg.device)

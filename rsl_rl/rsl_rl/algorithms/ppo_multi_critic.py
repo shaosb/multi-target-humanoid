@@ -38,7 +38,7 @@ class PPOMultiCritic:
         self.learning_rate = learning_rate
 
         # PPO components
-        self.actor_critic = ActorCriticMultiCritic
+        self.actor_critic = actor_critic
         self.actor_critic.to(self.device)
         self.storage = None  # initialized later
         # self.optimizer = optim.Adam(self.actor_critic.parameters(), lr=learning_rate)
@@ -78,7 +78,7 @@ class PPOMultiCritic:
         # Compute the actions and values
         self.transition.actions = self.actor_critic.act(obs).detach()
         self.transition.values = self.actor_critic.evaluate(critic_obs).detach()
-        self.transition.multi_critic_values = self.actor_critic.evaluate_multi_critic(multi_critic_obs).detach()
+        self.transition.multi_values = self.actor_critic.evaluate_multi_critic(multi_critic_obs).detach()
         self.transition.actions_log_prob = self.actor_critic.get_actions_log_prob(self.transition.actions).detach()
         self.transition.action_mean = self.actor_critic.action_mean.detach()
         self.transition.action_sigma = self.actor_critic.action_std.detach()
@@ -163,7 +163,16 @@ class PPOMultiCritic:
                     elif kl_mean < self.desired_kl / 2.0 and kl_mean > 0.0:
                         self.learning_rate = min(1e-2, self.learning_rate * 1.5)
 
-                    for param_group in self.optimizer.param_groups:
+                    # for param_group in self.optimizer.param_groups:
+                    #     param_group["lr"] = self.learning_rate
+
+                    for param_group in self.actor_optimizer.param_groups:
+                        param_group["lr"] = self.learning_rate
+
+                    for param_group in self.critic_optimizer.param_groups:
+                        param_group["lr"] = self.learning_rate
+
+                    for param_group in self.multi_critic_optimizer.param_groups:
                         param_group["lr"] = self.learning_rate
 
             # Surrogate loss

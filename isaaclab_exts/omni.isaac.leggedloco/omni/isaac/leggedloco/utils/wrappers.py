@@ -24,7 +24,7 @@ from rsl_rl.env import VecEnv
 from omni.isaac.lab.envs import DirectRLEnv, ManagerBasedRLEnv
 from omni.isaac.lab_tasks.utils.wrappers.rsl_rl import RslRlVecEnvWrapper
 
-from omni.isaac.lab_tasks.managers.reward_manager import RewardManager
+from omni.isaac.lab.managers.reward_manager import RewardManager
 
 from collections.abc import Sequence
 
@@ -117,31 +117,38 @@ class RslRlVecEnvHistoryWrapper(RslRlVecEnvWrapper):
         return self.env.close()
 
 
-class RslRlMultiCriticVecEnvHistoryWrapper(RslRlVecEnvHistoryWrapper):
+class RslRlMultiCriticVecEnvHistoryWrapper(RslRlVecEnvWrapper):
     """Wraps around Isaac Lab environment for RSL-RL to add multi critic and rewards. """
     
-    # def __init__(self, env: ManagerBasedRLEnv, history_length: int = 1):
-    #     super().__init__(env, history_length)
+    def __init__(self, env):
+        super().__init__(env)
+        self.clip_actions = 20.0
+        self.load_multi_critic_managers()
 
-    def load_managers(self):
+    def load_multi_critic_managers(self):
         assert self.cfg.multi_rewards is not None, "multi_rewards must be defined in the environment configuration."
-        
-        self.multi_reward_manager = RewardManager(self.cfg.multi_rewards, self)
+
+        self.multi_reward_manager = RewardManager(self.cfg.multi_rewards, self.env)
         print("[INFO] Multi Reward Manager: ", self.multi_reward_manager)
 
     def step(self, actions: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor, dict]:
+        actions = torch.clamp(actions, -self.clip_actions, self.clip_actions)
         curr_obs, rew, dones, extras = super().step(actions)
         # compute multi rewards
-        multi_rewards = self.multi_reward_manager.compute(dt=self.step_dt)
+        multi_rewards = self.multi_reward_manager.compute(dt=self.env.step_dt)
         # update the rewards in the extras dict
         extras["multi_rewards"] = multi_rewards
+        reset_env_ids = self.env.reset_buf.nonzero(as_tuple=False).squeeze(-1)
+        if len(reset_env_ids) > 0:
+            info = self._reset_multi_reward_idx(reset_env_ids)
+            extras["log"].update(info)
         return curr_obs, rew, dones, extras
 
-    def _reset_idx(self, env_ids: Sequence[int]):
+    def _reset_multi_reward_idx(self, env_ids: Sequence[int]):
         info = self.multi_reward_manager.reset(env_ids)
-        self.extra["log"].update(info)
-        super()._reset_idx(env_ids)
+        # self.extra["log"].update(info)
+        return info
 
     def close(self):
-        del multi_reward_manager
+        del self.multi_reward_manager
         return super().close()

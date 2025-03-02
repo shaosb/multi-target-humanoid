@@ -86,7 +86,7 @@ gym.register(
 
 
 gym.register(
-    id="h1_imitation_play",
+    id="h1_multi_critic_play",
     entry_point="omni.isaac.lab.envs:ManagerBasedRLEnv",
     disable_env_checker=True,
     kwargs={

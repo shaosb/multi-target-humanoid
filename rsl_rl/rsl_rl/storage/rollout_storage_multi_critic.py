@@ -79,7 +79,7 @@ class RolloutStorageMultiCritic:
         self.observations[self.step].copy_(transition.observations)
         if self.privileged_observations is not None:
             self.privileged_observations[self.step].copy_(transition.critic_observations)
-        self.multi_critic_observations[self.step].copy_(transition.multi_critic_observationss)
+        self.multi_critic_observations[self.step].copy_(transition.multi_critic_observations)
         self.actions[self.step].copy_(transition.actions)
         self.rewards[self.step].copy_(transition.rewards.view(-1, 1))
         self.multi_rewards[self.step].copy_(transition.multi_rewards.view(-1, 1))

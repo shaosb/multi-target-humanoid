@@ -60,7 +60,7 @@ class OnPolicyRunnerMultiCritic:
         self.alg: PPOMultiCritic = alg_class(actor_critic, device=self.device, **self.alg_cfg)
         self.num_steps_per_env = self.cfg["num_steps_per_env"]
         self.save_interval = self.cfg["save_interval"]
-        # self.empirical_normalization = self.cfg["empirical_normalization"]
+        self.empirical_normalization = self.cfg["empirical_normalization"]
         if self.empirical_normalization:
             self.obs_normalizer = EmpiricalNormalization(shape=[num_obs], until=1.0e8).to(self.device)
             self.critic_obs_normalizer = EmpiricalNormalization(shape=[num_critic_obs], until=1.0e8).to(self.device)
@@ -88,26 +88,25 @@ class OnPolicyRunnerMultiCritic:
 
     def learn(self, num_learning_iterations: int, init_at_random_ep_len: bool = False):
         # initialize writer
-        # if self.log_dir is not None and self.writer is None:
-        #     # Launch either Tensorboard or Neptune & Tensorboard summary writer(s), default: Tensorboard.
-        #     self.logger_type = self.cfg.get("logger", "tensorboard")
-        #     self.logger_type = self.logger_type.lower()
+        if self.log_dir is not None and self.writer is None:
+            # Launch either Tensorboard or Neptune & Tensorboard summary writer(s), default: Tensorboard.
+            self.logger_type = self.cfg.get("logger", "tensorboard")
+            self.logger_type = self.logger_type.lower()
 
-        #     if self.logger_type == "neptune":
-        #         from rsl_rl.utils.neptune_utils import NeptuneSummaryWriter
+            if self.logger_type == "neptune":
+                from rsl_rl.utils.neptune_utils import NeptuneSummaryWriter
 
-        #         self.writer = NeptuneSummaryWriter(log_dir=self.log_dir, flush_secs=10, cfg=self.cfg)
-        #         self.writer.log_config(self.env.cfg, self.cfg, self.alg_cfg, self.policy_cfg)
-        #     elif self.logger_type == "wandb":
-        #         from rsl_rl.utils.wandb_utils import WandbSummaryWriter
+                self.writer = NeptuneSummaryWriter(log_dir=self.log_dir, flush_secs=10, cfg=self.cfg)
+                self.writer.log_config(self.env.cfg, self.cfg, self.alg_cfg, self.policy_cfg)
+            elif self.logger_type == "wandb":
+                from rsl_rl.utils.wandb_utils import WandbSummaryWriter
 
-        #         self.writer = WandbSummaryWriter(log_dir=self.log_dir, flush_secs=10, cfg=self.cfg)
-        #         self.writer.log_config(self.env.cfg, self.cfg, self.alg_cfg, self.policy_cfg)
-        #     elif self.logger_type == "tensorboard":
-        #         self.writer = TensorboardSummaryWriter(log_dir=self.log_dir, flush_secs=10)
-        #     else:
-        #         raise AssertionError("logger type not found")
-        self.writer = TensorboardSummaryWriter(log_dir=self.log_dir, flush_secs=10)
+                self.writer = WandbSummaryWriter(log_dir=self.log_dir, flush_secs=10, cfg=self.cfg)
+                self.writer.log_config(self.env.cfg, self.cfg, self.alg_cfg, self.policy_cfg)
+            elif self.logger_type == "tensorboard":
+                self.writer = TensorboardSummaryWriter(log_dir=self.log_dir, flush_secs=10)
+            else:
+                raise AssertionError("logger type not found")
 
         if init_at_random_ep_len:
             self.env.episode_length_buf = torch.randint_like(
@@ -287,7 +286,10 @@ class OnPolicyRunnerMultiCritic:
     def save(self, path, infos=None):
         saved_dict = {
             "model_state_dict": self.alg.actor_critic.state_dict(),
-            "optimizer_state_dict": self.alg.optimizer.state_dict(),
+            # "optimizer_state_dict": self.alg.optimizer.state_dict(),
+            "actor_optimizer_state_dict": self.alg.actor_optimizer.state_dict(),
+            "critic_optimizer_state_dict": self.alg.critic_optimizer.state_dict(),
+            "multi_critic_optimizer_state_dict": self.alg.multi_critic_optimizer.state_dict(),
             "iter": self.current_learning_iteration,
             "infos": infos,
         }
@@ -307,7 +309,10 @@ class OnPolicyRunnerMultiCritic:
             self.obs_normalizer.load_state_dict(loaded_dict["obs_norm_state_dict"])
             self.critic_obs_normalizer.load_state_dict(loaded_dict["critic_obs_norm_state_dict"])
         if load_optimizer:
-            self.alg.optimizer.load_state_dict(loaded_dict["optimizer_state_dict"])
+            # self.alg.optimizer.load_state_dict(loaded_dict["optimizer_state_dict"])
+            self.alg.actor_optimizer.load_state_dict(loaded_dict["actor_optimizer_state_dict"])
+            self.alg.critic_optimizer.load_state_dict(loaded_dict["critic_optimizer_state_dict"])
+            self.alg.multi_critic_optimizer.load_state_dict(loaded_dict["multi_critic_optimizer_state_dict"])
         self.current_learning_iteration = loaded_dict["iter"]
         return loaded_dict["infos"]
 
