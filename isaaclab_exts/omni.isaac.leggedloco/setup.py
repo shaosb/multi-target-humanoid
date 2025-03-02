@@ -6,7 +6,7 @@ from setuptools import setup
 # Minimum dependencies required prior to installation
 INSTALL_REQUIRES = [
     # generic
-    "numpy",
+    # "numpy",
     "scipy>=1.7.1",
     # RL
     "torch>=1.9.0",
