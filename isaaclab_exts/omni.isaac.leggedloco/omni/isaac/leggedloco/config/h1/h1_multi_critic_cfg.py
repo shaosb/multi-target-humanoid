@@ -38,11 +38,41 @@ from omni.isaac.lab_tasks.manager_based.locomotion.velocity.config.h1.rough_env_
 from omni.isaac.lab.terrains.config.rough import ROUGH_TERRAINS_CFG  # isort: skip
 from omni.isaac.lab_assets import H1_MINIMAL_CFG  # isort: skip
 from .h1_low_base_cfg import H1RoughPPORunnerCfg
+from omni.isaac.lab_tasks.utils.wrappers.rsl_rl import (
+    RslRlOnPolicyRunnerCfg,
+    RslRlPpoActorCriticCfg,
+    RslRlPpoAlgorithmCfg,
+)
 
 
 @configclass
 class H1MultiCriticPPORunnerCfg(H1RoughPPORunnerCfg):
-    experiment_name = "h1_vision_rough"
+    num_steps_per_env = 32
+    max_iterations = 50000
+    save_interval = 500
+    experiment_name = "h1_base_rough"
+    empirical_normalization = False
+    policy = RslRlPpoActorCriticCfg(
+        init_noise_std=1.0,
+        actor_hidden_dims=[512, 256, 128],
+        critic_hidden_dims=[512, 256, 128],
+        activation="elu",
+        class_name="ActorCriticMultiCritic",
+    )
+    algorithm = RslRlPpoAlgorithmCfg(
+        value_loss_coef=1.0,
+        use_clipped_value_loss=True,
+        clip_param=0.2,
+        entropy_coef=0.005,
+        num_learning_epochs=5,
+        num_mini_batches=4,
+        learning_rate=1.0e-3,
+        schedule="adaptive",
+        gamma=0.99,
+        lam=0.95,
+        desired_kl=0.01,
+        max_grad_norm=1.0,
+    )
 
 
 
@@ -242,6 +272,7 @@ class ObservationsCfg:
     policy: PolicyCfg = PolicyCfg()
     proprio: ProprioCfg = ProprioCfg()
     critic: CriticObsCfg = CriticObsCfg()
+    multi_critic: CriticObsCfg = CriticObsCfg()
 
 ## 
 # Actions
@@ -354,7 +385,7 @@ class CustomH1Rewards(H1Rewards):
 
 
 @configclass
-class NormalRewards(H1Rewards):
+class MultiRewards(H1Rewards):
     feet_stumble = RewTerm(
         func=mdp.feet_stumble,
         weight=-0.5,
@@ -407,7 +438,7 @@ class H1MultiCriticEnvCfg(ManagerBasedRLEnvCfg):
     commands: CommandsCfg = CommandsCfg()
     # MDP settings
     rewards: RewardsCfg = CustomH1Rewards()
-    multi_rewards: RewardsCfg = NormalRewards()
+    multi_rewards: RewardsCfg = MultiRewards()
     # rewards: RewardsCfg = H1Rewards()
     # rewards: RewardsCfg = CustomH1Rewards()
     terminations: TerminationsCfg = TerminationsCfg()
