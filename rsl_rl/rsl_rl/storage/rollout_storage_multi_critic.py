@@ -117,8 +117,8 @@ class RolloutStorageMultiCritic:
 
     def compute_advantages(self):
         # TODO test if mean is better
-        # self.advantages = (self.value_advantages + self.multi_advantages) / 2
-        self.advantages = self.value_advantages + self.multi_advantages
+        self.advantages = (self.value_advantages + self.multi_advantages) / 2
+        # self.advantages = self.value_advantages + self.multi_advantages
 
     def compute_returns(self, last_values, multi_last_values, gamma, lam):
         advantage_value = 0  # Critic 1 的优势
